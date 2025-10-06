@@ -5,8 +5,7 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "dev": "nodemon src/index.ts",
-    "build": "node --max-old-space-size=768 ./node_modules/typescript/bin/tsc --incremental --noEmitOnError --skipLibCheck",
+    "build": "tsc",
     "start": "node dist/index.js"
   },
   "dependencies": {
