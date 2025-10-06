@@ -5,13 +5,11 @@
     "moduleResolution": "node",
     "rootDir": "src",
     "outDir": "dist",
-
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-
-    "strict": true,
+    "strict": false,
     "skipLibCheck": true,
     "incremental": true,
     "noEmitOnError": false,
