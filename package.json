@@ -6,7 +6,6 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/index.ts",
-    "prestart": "npm run build",
     "build": "node --max-old-space-size=768 ./node_modules/typescript/bin/tsc --incremental --noEmitOnError --skipLibCheck",
     "start": "node dist/index.js"
   },
