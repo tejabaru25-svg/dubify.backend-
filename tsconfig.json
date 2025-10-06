@@ -13,19 +13,10 @@
 
     "strict": true,
     "skipLibCheck": true,
-    "noImplicitAny": false,
-    "allowUnreachableCode": false,
-    "allowUnusedLabels": false,
-
-    "isolatedModules": true,
-    "moduleDetection": "force",
-
-    /* 💡 Optimization flags for Render */
     "incremental": true,
     "noEmitOnError": false,
-    "allowJs": false,
-    "noFallthroughCasesInSwitch": true
+    "isolatedModules": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "exclude": ["node_modules", "dist"]
 }
