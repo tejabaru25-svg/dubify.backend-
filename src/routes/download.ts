@@ -1,31 +1,29 @@
 import express from "express";
-import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
-
-dotenv.config();
 const router = express.Router();
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_KEY!
-);
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
 router.get("/:jobId", async (req, res) => {
   try {
     const { jobId } = req.params;
     const { data, error } = await supabase
       .from("jobs")
-      .select("output_url")
+      .select("output_url, language, created_at")
       .eq("id", jobId)
       .single();
 
-    if (error || !data?.output_url)
-      return res.status(404).json({ error: "Dubbed video not found" });
+    if (error || !data) return res.status(404).json({ error: "Result not found" });
 
-    res.redirect(data.output_url);
-  } catch (err) {
-    console.error("Download Error:", err);
-    res.status(500).json({ error: "Failed to get dubbed video" });
+    res.json({
+      status: "success",
+      message: "Dubbed video ready 🎬",
+      outputUrl: data.output_url,
+      language: data.language,
+      createdAt: data.created_at
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 
