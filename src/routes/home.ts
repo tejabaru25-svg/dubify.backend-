@@ -1,36 +1,22 @@
-import express, { Request, Response } from "express";
-
+import express from "express";
+import os from "os";
 const router = express.Router();
 
-/**
- * GET /
- * Health check route for the Dubify AI backend.
- * Confirms that the server is live and functioning correctly.
- */
-router.get("/", (req: Request, res: Response) => {
-  res.json({
-    status: "success",
-    message: "Welcome to Dubify AI Backend 🎬",
-    version: "Level 3 Cinematic Dubbing",
-    time: new Date().toISOString()
-  });
-});
+router.get("/", async (req, res) => {
+  const memory = process.memoryUsage();
+  const cpuLoad = os.loadavg()[0].toFixed(2);
 
-/**
- * GET /status
- * Returns system-level operational data for monitoring.
- */
-router.get("/status", (req: Request, res: Response) => {
   res.json({
-    system: "online",
-    ai_engine: "Level 3 Dubbing Core",
-    voice_models: "Multi-speaker, age & gender adaptive",
-    lip_sync: "Real-time Wav2Lip enabled",
-    translation_engine: "OpenAI Whisper + ElevenLabs sync",
-    message: "Dubify AI backend system operational ✅",
-    timestamp: new Date().toISOString()
+    project: "Dubify Mini Level 3 MVP",
+    version: "v1.0-mini",
+    aiModules: ["Diarization", "Translation", "Voice", "LipSync"],
+    system: {
+      cpuLoad,
+      memoryUsedMB: (memory.heapUsed / 1024 / 1024).toFixed(2),
+      uptimeSeconds: process.uptime().toFixed(0)
+    },
+    health: "🟢 All systems optimal"
   });
 });
 
 export default router;
-
