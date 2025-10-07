@@ -1,20 +1,21 @@
 {
-  "name": "dubify-backend",
+  "name": "dubify-mini-level3",
   "version": "1.0.0",
-  "description": "Backend API for Dubify AI - Level 3 Cinematic Dubbing System",
+  "description": "Mini Level 3 Cinematic Dubbing Backend for Dubify AI",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "dev": "nodemon src/index.ts",
+    "build": "node --max-old-space-size=768 ./node_modules/typescript/bin/tsc --incremental --noEmitOnError --skipLibCheck",
     "start": "node dist/index.js"
   },
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
-    "aws-sdk": "^2.1470.0",
     "axios": "^1.6.2",
-    "@supabase/supabase-js": "^2.38.4"
+    "@supabase/supabase-js": "^2.38.4",
+    "aws-sdk": "^2.1470.0"
   },
   "devDependencies": {
     "typescript": "^5.3.3",
