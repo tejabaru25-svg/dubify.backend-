@@ -1,7 +1,7 @@
 {
   "name": "dubify-mini-level3",
-  "version": "1.0.0",
-  "description": "Mini Level 3 Cinematic Dubbing Backend for Dubify AI",
+  "version": "1.0.1",
+  "description": "Mini Level 3 Cinematic Dubbing Backend for Dubify AI (OpenAI + HuggingFace + Replicate Integration)",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
@@ -15,7 +15,9 @@
     "dotenv": "^16.0.3",
     "axios": "^1.6.2",
     "@supabase/supabase-js": "^2.38.4",
-    "aws-sdk": "^2.1470.0"
+    "aws-sdk": "^2.1470.0",
+    "openai": "^4.52.0",
+    "form-data": "^4.0.0"
   },
   "devDependencies": {
     "typescript": "^5.3.3",
@@ -24,11 +26,23 @@
     "@types/node": "^20.10.5",
     "@types/express": "^4.17.21",
     "@types/cors": "^2.8.17",
-    "@types/aws-sdk": "^2.7.0"
+    "@types/aws-sdk": "^2.7.0",
+    "@types/form-data": "^2.5.1"
   },
   "engines": {
     "node": ">=18.0.0"
   },
+  "keywords": [
+    "dubify-ai",
+    "cinematic-dubbing",
+    "openai-tts",
+    "huggingface",
+    "replicate",
+    "ai-voice",
+    "video-dubbing",
+    "typescript",
+    "express"
+  ],
   "author": "Dubify AI Team",
   "license": "MIT"
 }
