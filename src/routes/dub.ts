@@ -1,47 +1,71 @@
 import express from "express";
-import axios from "axios";
-import dotenv from "dotenv";
-import { createClient } from "@supabase/supabase-js";
+import { runDiarization } from "../ai/diarization";
+import { translateSegments } from "../ai/translation";
+import { generateVoices } from "../ai/voice";
+import { runLipSync } from "../ai/lipsync";
 
-dotenv.config();
 const router = express.Router();
 
-// Supabase setup
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_KEY!
-);
-
-// POST /dub
+/**
+ * POST /dub
+ * Full cinematic dubbing pipeline:
+ * 1. Diarize speakers
+ * 2. Translate each segment
+ * 3. Generate AI voices
+ * 4. Lip-sync video
+ */
 router.post("/", async (req, res) => {
   try {
-    const { videoUrl, targetLanguage, voiceType } = req.body;
+    const { videoUrl, targetLanguage } = req.body;
 
-    if (!videoUrl || !targetLanguage || !voiceType) {
-      return res.status(400).json({ error: "Missing parameters" });
+    if (!videoUrl || !targetLanguage) {
+      return res.status(400).json({
+        error: "Missing required parameters: videoUrl, targetLanguage",
+      });
     }
 
-    // Save job in Supabase
-    const { data: job, error: dbError } = await supabase
-      .from("jobs")
-      .insert([{ video_url: videoUrl, language: targetLanguage, voice: voiceType, status: "pending" }])
-      .select()
-      .single();
+    console.log("🎬 Starting dubbing pipeline...");
+    console.log("🎥 Video URL:", videoUrl);
+    console.log("🌍 Target language:", targetLanguage);
 
-    if (dbError) throw dbError;
+    // STEP 1: Diarization (detect multiple speakers)
+    const diarized = await runDiarization(videoUrl);
 
-    // Send to Hugging Face AI worker
-    await axios.post(process.env.WORKER_URL!, {
-      jobId: job.id,
-      videoUrl,
-      targetLanguage,
-      voiceType
+    // STEP 2: Generate fake transcript for demo
+    const transcript = diarized.map((spk) => ({
+      speaker: spk.speaker,
+      text: `Sample dialogue for ${spk.speaker}.`,
+      voiceType: spk.voiceType,
+    }));
+
+    // STEP 3: Translation
+    const translated = await translateSegments(transcript, targetLanguage);
+
+    // STEP 4: Voice generation
+    const voices = await generateVoices(translated);
+
+    // STEP 5: Lip sync
+    const finalVideoUrl = await runLipSync(videoUrl, voices);
+
+    console.log("✅ Dubbing pipeline completed successfully!");
+
+    res.json({
+      status: "success",
+      message: "Dubify Mini Level 3 complete",
+      output: {
+        originalVideo: videoUrl,
+        dubbedVideo: finalVideoUrl,
+        language: targetLanguage,
+        speakers: diarized.length,
+      },
     });
-
-    res.json({ message: "Job started", jobId: job.id });
-  } catch (err) {
-    console.error("Dub Error:", err);
-    res.status(500).json({ error: "Failed to start dubbing job" });
+  } catch (err: any) {
+    console.error("❌ Dubbing pipeline failed:", err.message);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to process dubbing",
+      error: err.message,
+    });
   }
 });
 
