@@ -1,15 +1,14 @@
 import fs from "fs";
 import path from "path";
-import { Configuration, OpenAIApi } from "openai";
+import OpenAI from "openai";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const openai = new OpenAIApi(
-  new Configuration({
-    apiKey: process.env.OPENAI_API_KEY,
-  })
-);
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 /**
  * Generate realistic voices using OpenAI TTS
@@ -35,6 +34,7 @@ export async function generateVoices(segments: any[]) {
         input: text,
       });
 
+      // Convert response to buffer and save as file
       const buffer = Buffer.from(await response.arrayBuffer());
       fs.writeFileSync(outputFile, buffer);
 
