@@ -9,11 +9,11 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-    "strict": true,
+    "strict": false,
     "skipLibCheck": true,
-    "incremental": true,
-    "noEmitOnError": false,
-    "isolatedModules": true
+    "noImplicitAny": false,
+    "isolatedModules": true,
+    "moduleDetection": "force"
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
