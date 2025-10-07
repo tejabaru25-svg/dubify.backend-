@@ -1,86 +1,55 @@
-import axios from "axios";
 import fs from "fs";
 import path from "path";
+import { Configuration, OpenAIApi } from "openai";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const openai = new OpenAIApi(
+  new Configuration({
+    apiKey: process.env.OPENAI_API_KEY,
+  })
+);
 
 /**
- * Generates voice for each translated speaker segment.
- * Supports ElevenLabs or OpenAI TTS fallback.
+ * Generate realistic voices using OpenAI TTS
+ * Each segment = one speaker line
  */
+export async function generateVoices(segments: any[]) {
+  console.log("🎙️ Generating AI voices with OpenAI TTS...");
 
-export async function generateVoices(
-  translatedSegments: Array<{ speaker: string; translatedText: string; voiceType: string }>
-) {
-  try {
-    const elevenKey = process.env.ELEVENLABS_API_KEY;
-    const openaiKey = process.env.OPENAI_API_KEY;
-    if (!elevenKey && !openaiKey) throw new Error("Missing TTS API keys");
+  const outputs = [];
 
-    console.log(`🎤 Generating voices for ${translatedSegments.length} segments...`);
+  for (const seg of segments) {
+    try {
+      // Clean and enhance text for realism
+      const text = seg.text
+        .replace(/\s+/g, " ")
+        .replace(/([.?!])\s*(?=[A-Z])/g, "$1\n");
 
-    const audioOutputs: Array<{ speaker: string; filePath: string }> = [];
+      const outputFile = path.resolve(`./tmp_${Date.now()}.mp3`);
 
-    for (const seg of translatedSegments) {
-      let voiceFile = path.resolve(`tmp_${seg.speaker}.mp3`);
-      let ttsUrl = "";
-
-      // Voice selection based on age/gender
-      let voicePreset = "Adam";
-      if (seg.voiceType === "child") voicePreset = "Charlie";
-      else if (seg.voiceType === "adult-female") voicePreset = "Bella";
-      else if (seg.voiceType === "elderly-female") voicePreset = "Dorothy";
-
-      console.log(`🗣️ ${seg.speaker} (${seg.voiceType}) → ${voicePreset}`);
-
-      if (elevenKey) {
-        // ElevenLabs TTS
-        const voiceResponse = await axios.post(
-          `https://api.elevenlabs.io/v1/text-to-speech/${voicePreset}`,
-          {
-            text: seg.translatedText,
-            model_id: "eleven_multilingual_v2",
-            voice_settings: { stability: 0.4, similarity_boost: 0.7 }
-          },
-          {
-            headers: {
-              "xi-api-key": elevenKey,
-              "Content-Type": "application/json"
-            },
-            responseType: "arraybuffer"
-          }
-        );
-
-        fs.writeFileSync(voiceFile, Buffer.from(voiceResponse.data), "binary");
-      } else if (openaiKey) {
-        // OpenAI TTS fallback
-        const voiceResponse = await axios.post(
-          "https://api.openai.com/v1/audio/speech",
-          {
-            model: "gpt-4o-mini-tts",
-            voice: seg.voiceType.includes("female") ? "alloy" : "verse",
-            input: seg.translatedText
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${openaiKey}`,
-              "Content-Type": "application/json"
-            },
-            responseType: "arraybuffer"
-          }
-        );
-
-        fs.writeFileSync(voiceFile, Buffer.from(voiceResponse.data), "binary");
-      }
-
-      audioOutputs.push({
-        speaker: seg.speaker,
-        filePath: voiceFile
+      const response = await openai.audio.speech.create({
+        model: "gpt-4o-mini-tts",
+        voice: seg.voiceType === "female" ? "verse" : "ash",
+        input: text,
       });
-    }
 
-    console.log("✅ Voice generation completed for all speakers.");
-    return audioOutputs;
-  } catch (err: any) {
-    console.error("❌ Voice generation error:", err.message);
-    throw err;
+      const buffer = Buffer.from(await response.arrayBuffer());
+      fs.writeFileSync(outputFile, buffer);
+
+      outputs.push({
+        ...seg,
+        audioPath: outputFile,
+        audioBase64: buffer.toString("base64"),
+      });
+
+      console.log(`✅ Voice generated for ${seg.speaker}`);
+    } catch (error: any) {
+      console.error("❌ Voice generation failed:", error.message);
+    }
   }
+
+  console.log("✅ All voices generated successfully.");
+  return outputs;
 }
