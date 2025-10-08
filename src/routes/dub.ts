@@ -29,7 +29,7 @@ router.post("/", async (req, res) => {
     console.log("🌍 Target Language:", targetLanguage);
 
     // STEP 1: Diarization (detect multiple speakers)
-    const diarized: any[] = await runDiarization(videoUrl);
+    const diarized = (await runDiarization(videoUrl)) as any[];
 
     if (!Array.isArray(diarized) || diarized.length === 0) {
       throw new Error("Diarization returned no speakers");
@@ -38,14 +38,14 @@ router.post("/", async (req, res) => {
     console.log(`👥 Found ${diarized.length} speakers`);
 
     // STEP 2: Generate basic transcript structure
-    const transcript = diarized.map((spk, i) => ({
+    const transcript: any[] = diarized.map((spk: any, i: number) => ({
       speaker: spk.speaker || `Speaker ${i + 1}`,
       text: `Sample dialogue for ${spk.speaker || `Speaker ${i + 1}`}.`,
       voiceType: spk.voiceType || "neutral",
     }));
 
-    // STEP 3: Translate
-    const translated: any[] = await translateSegments(transcript, targetLanguage);
+    // STEP 3: Translation
+    const translated = (await translateSegments(transcript, targetLanguage)) as any[];
 
     if (!Array.isArray(translated) || translated.length === 0) {
       throw new Error("Translation failed or returned no content");
@@ -54,7 +54,7 @@ router.post("/", async (req, res) => {
     console.log(`🌐 Translated ${translated.length} segments`);
 
     // STEP 4: Voice generation
-    const voices: any[] = await generateVoices(translated);
+    const voices = (await generateVoices(translated)) as any[];
 
     if (!Array.isArray(voices) || voices.length === 0) {
       throw new Error("Voice generation failed");
