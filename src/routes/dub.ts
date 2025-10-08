@@ -1,25 +1,18 @@
 import express from "express";
-import { createClient } from "@supabase/supabase-js";
-import dotenv from "dotenv";
+import { runDiarization } from "../ai/diarization";
+import { translateSegments } from "../ai/translation";
+import { generateVoices } from "../ai/voice";
+import { runLipSync } from "../ai/lipsync";
 
-import { runDiarization } from "../ai/diarization.js";
-import { translateSegments } from "../ai/translation.js";
-import { generateVoices } from "../ai/voice.js";
-import { runLipSync } from "../ai/lipsync.js";
-
-dotenv.config();
 const router = express.Router();
-
-// 🧩 Initialize Supabase
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
 
 /**
  * POST /dub
- * Full cinematic dubbing pipeline (Mini Level 3 MVP)
- * Saves job → runs AI pipeline → updates job record
+ * Full cinematic dubbing pipeline:
+ * 1. Diarize speakers
+ * 2. Translate each segment
+ * 3. Generate AI voices
+ * 4. Lip-sync video
  */
 router.post("/", async (req, res) => {
   try {
@@ -27,107 +20,65 @@ router.post("/", async (req, res) => {
 
     if (!videoUrl || !targetLanguage) {
       return res.status(400).json({
-        status: "error",
-        message: "Missing required parameters: videoUrl, targetLanguage",
+        error: "Missing required parameters: videoUrl, targetLanguage",
       });
     }
 
     console.log("🎬 Starting Dubify dubbing pipeline...");
-    console.log(`🎥 Video: ${videoUrl}`);
-    console.log(`🌍 Target Language: ${targetLanguage}`);
+    console.log("🎥 Video:", videoUrl);
+    console.log("🌍 Target Language:", targetLanguage);
 
-    // 🧾 STEP 1: Create job record in Supabase
-    const { data: job, error: jobError } = await supabase
-      .from("jobs")
-      .insert([
-        {
-          target_language: targetLanguage,
-          status: "processing",
-          output_url: null,
-          error_message: null,
-        },
-      ])
-      .select()
-      .single();
+    // STEP 1: Diarization (detect multiple speakers)
+    const diarized: any[] = await runDiarization(videoUrl);
 
-    if (jobError) throw jobError;
+    if (!Array.isArray(diarized) || diarized.length === 0) {
+      throw new Error("Diarization returned no speakers");
+    }
 
-    console.log(`🆕 Job created: ${job.id}`);
+    console.log(`👥 Found ${diarized.length} speakers`);
 
-    // Optional logging helper
-    const log = async (step: string, message: string) => {
-      await supabase.from("logs").insert([
-        { job_id: job.id, step, message }
-      ]);
-    };
-
-    await log("start", "Dubbing process started.");
-
-    // 🧩 STEP 2: Diarization
-    await log("diarization", "Running diarization...");
-    const diarized = await runDiarization(videoUrl);
-    await log("diarization", `Detected ${diarized.length} speakers.`);
-
-    // 🧩 STEP 3: Translation
-    await log("translation", "Translating dialogue...");
-    const transcript = diarized.map((spk) => ({
-      speaker: spk.speaker,
-      text: `Sample dialogue for ${spk.speaker}`,
-      voiceType: spk.voiceType,
+    // STEP 2: Generate basic transcript structure
+    const transcript = diarized.map((spk, i) => ({
+      speaker: spk.speaker || `Speaker ${i + 1}`,
+      text: `Sample dialogue for ${spk.speaker || `Speaker ${i + 1}`}.`,
+      voiceType: spk.voiceType || "neutral",
     }));
-    const translated = await translateSegments(transcript, targetLanguage);
-    await log("translation", "Translation completed.");
 
-    // 🧩 STEP 4: Voice generation
-    await log("voice", "Generating voices...");
-    const voices = await generateVoices(translated);
-    await log("voice", "Voice generation completed.");
+    // STEP 3: Translate
+    const translated: any[] = await translateSegments(transcript, targetLanguage);
 
-    // 🧩 STEP 5: Lip-sync
-    await log("lipsync", "Performing lip-sync dubbing...");
+    if (!Array.isArray(translated) || translated.length === 0) {
+      throw new Error("Translation failed or returned no content");
+    }
+
+    console.log(`🌐 Translated ${translated.length} segments`);
+
+    // STEP 4: Voice generation
+    const voices: any[] = await generateVoices(translated);
+
+    if (!Array.isArray(voices) || voices.length === 0) {
+      throw new Error("Voice generation failed");
+    }
+
+    console.log(`🎤 Generated ${voices.length} audio tracks`);
+
+    // STEP 5: Lip sync
     const finalVideoUrl = await runLipSync(videoUrl, voices);
-    await log("lipsync", "Lip-sync completed successfully.");
 
-    // ✅ STEP 6: Update job record
-    const { error: updateError } = await supabase
-      .from("jobs")
-      .update({
-        status: "done",
-        output_url: finalVideoUrl,
-        completed_at: new Date(),
-      })
-      .eq("id", job.id);
-
-    if (updateError) throw updateError;
-
-    await log("complete", "Dubbing job completed successfully.");
-
-    console.log("✅ Dubbing job finished!");
+    console.log("✅ Dubbing pipeline completed successfully!");
 
     res.json({
       status: "success",
-      message: "Dubify dubbing complete 🎬",
-      jobId: job.id,
+      message: "Dubify Mini Level 3 complete 🎬",
       output: {
         originalVideo: videoUrl,
         dubbedVideo: finalVideoUrl,
         language: targetLanguage,
-        totalSpeakers: diarized.length,
-        processedAt: new Date().toISOString(),
+        speakers: diarized.length,
       },
     });
   } catch (err: any) {
     console.error("❌ Dubbing failed:", err.message);
-
-    // Record failure in DB
-    await supabase
-      .from("jobs")
-      .update({
-        status: "failed",
-        error_message: err.message,
-      })
-      .eq("status", "processing");
-
     res.status(500).json({
       status: "error",
       message: "Failed to process dubbing",
