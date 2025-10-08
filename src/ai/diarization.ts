@@ -1,46 +1,45 @@
 import Replicate from "replicate";
 
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN!,
-});
-
-/**
- * Runs multi-speaker diarization on an audio/video input.
- * Returns detected speakers and timestamps.
- */
 export async function runDiarization(videoUrl: string) {
   try {
-    console.log("🎧 Running diarization and speaker classification...");
+    const replicate = new Replicate({
+      auth: process.env.REPLICATE_API_TOKEN!,
+    });
 
-    // Input to the diarization model
+    if (!process.env.REPLICATE_API_TOKEN) {
+      throw new Error("Missing REPLICATE_API_TOKEN in environment variables.");
+    }
+
+    console.log("🎧 Running speaker diarization with Replicate...");
+
+    // Convert video → audio (Replicate requires an audio URL)
     const input = {
-      audio: videoUrl, // can be video or audio link
+      audio: videoUrl,
     };
 
-    // ✅ using lucataco/speaker-diarization model (fast + reliable)
     const output = await replicate.run(
-      `lucataco/speaker-diarization:${process.env.REPLICATE_MODEL_VERSION}`,
+      "lucataco/speaker-diarization:718182bfdc7c91943c69ed0ac18ebe99a76fdde67ccd01fced347d8c3b8c15a6",
       { input }
     );
 
-    console.log("🧩 Diarization output:", output);
+    console.log("✅ Diarization completed successfully.");
 
-    // Format result if available
-    if (Array.isArray(output)) {
-      return output.map((seg: any, i: number) => ({
-        speaker: seg.speaker || `Speaker ${i + 1}`,
-        start: seg.start || 0,
-        end: seg.end || 0,
-        voiceType: seg.speaker?.toLowerCase().includes("female")
-          ? "female"
-          : "male",
-      }));
+    // Normalize output to array
+    if (Array.isArray(output)) return output;
+    if (typeof output === "object") return [output];
+    return [];
+  } catch (err: any) {
+    console.error("❌ Diarization error:", err.message);
+
+    if (err.response?.status === 403) {
+      console.error(
+        "🚫 403 Forbidden: Your Replicate API token may be invalid or missing permissions."
+      );
+      console.error(
+        "➡️ Go to https://replicate.com/account/api-tokens and regenerate a fresh token."
+      );
     }
 
-    console.log("✅ Diarization completed successfully");
-    return output;
-  } catch (err: any) {
-    console.error("❌ Diarization failed:", err.message);
-    throw new Error(`Replicate diarization failed: ${err.message}`);
+    throw err;
   }
 }
