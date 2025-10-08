@@ -1,62 +1,46 @@
-import axios from "axios";
+import Replicate from "replicate";
 
-export async function runDiarization(audioUrl: string) {
+const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN!,
+});
+
+/**
+ * Runs multi-speaker diarization on an audio/video input.
+ * Returns detected speakers and timestamps.
+ */
+export async function runDiarization(videoUrl: string) {
   try {
-    const replicateToken = process.env.REPLICATE_API_TOKEN;
-    const replicateModelVersion = process.env.REPLICATE_MODEL_VERSION;
-
-    if (!replicateToken || !replicateModelVersion) {
-      throw new Error("Missing REPLICATE_API_TOKEN or REPLICATE_MODEL_VERSION");
-    }
-
     console.log("🎧 Running diarization and speaker classification...");
 
-    const response = await axios.post(
-      "https://api.replicate.com/v1/predictions",
-      {
-        version: replicateModelVersion,
-        input: {
-          audio: audioUrl,
-        },
-      },
-      {
-        headers: {
-          Authorization: `Token ${replicateToken}`,
-          "Content-Type": "application/json",
-        },
-      }
+    // Input to the diarization model
+    const input = {
+      audio: videoUrl, // can be video or audio link
+    };
+
+    // ✅ using lucataco/speaker-diarization model (fast + reliable)
+    const output = await replicate.run(
+      `lucataco/speaker-diarization:${process.env.REPLICATE_MODEL_VERSION}`,
+      { input }
     );
 
-    // Check if replicate returned output URL
-    if (response.data?.urls?.get) {
-      console.log("🕒 Diarization job submitted, fetching results...");
-      const resultUrl = response.data.urls.get;
+    console.log("🧩 Diarization output:", output);
 
-      // Poll for completion
-      let output;
-      while (true) {
-        const statusResp = await axios.get(resultUrl, {
-          headers: { Authorization: `Token ${replicateToken}` },
-        });
-
-        if (statusResp.data.status === "succeeded") {
-          output = statusResp.data.output;
-          break;
-        }
-        if (statusResp.data.status === "failed") {
-          throw new Error("Diarization failed on Replicate");
-        }
-
-        await new Promise((r) => setTimeout(r, 5000)); // wait 5s
-      }
-
-      console.log("✅ Diarization complete!");
-      return output;
-    } else {
-      throw new Error("Replicate API did not return a valid output URL");
+    // Format result if available
+    if (Array.isArray(output)) {
+      return output.map((seg: any, i: number) => ({
+        speaker: seg.speaker || `Speaker ${i + 1}`,
+        start: seg.start || 0,
+        end: seg.end || 0,
+        voiceType: seg.speaker?.toLowerCase().includes("female")
+          ? "female"
+          : "male",
+      }));
     }
+
+    console.log("✅ Diarization completed successfully");
+    return output;
   } catch (err: any) {
-    console.error("❌ Diarization error:", err.message);
-    throw err;
+    console.error("❌ Diarization failed:", err.message);
+    throw new Error(`Replicate diarization failed: ${err.message}`);
   }
 }
