@@ -29,50 +29,60 @@ router.post("/", async (req, res) => {
     console.log("🎥 Video URL:", videoUrl);
     console.log("🌍 Target Language:", targetLanguage);
 
-    // STEP 1: Diarization
-    const diarized: any[] = await runDiarization(videoUrl);
+    // 🧠 STEP 1: Diarization
+    let diarized: any[] = [];
+    const diarizationResult = await runDiarization(videoUrl);
 
-    if (!Array.isArray(diarized) || diarized.length === 0) {
-      throw new Error("Diarization returned no speakers.");
+    // Force safe array format
+    if (Array.isArray(diarizationResult)) {
+      diarized = diarizationResult;
+    } else if (diarizationResult && typeof diarizationResult === "object") {
+      diarized = [diarizationResult];
     }
 
-    console.log(`👥 Found ${diarized.length} speakers.`);
+    if (diarized.length === 0) {
+      throw new Error("Diarization returned no speakers");
+    }
 
-    // STEP 2: Build temporary transcript
+    console.log(`👥 Found ${diarized.length} speakers`);
+
+    // 🗒️ STEP 2: Create transcript
     const transcript = diarized.map((spk: any, i: number) => ({
       speaker: spk.speaker || `Speaker ${i + 1}`,
       text: `Sample dialogue for ${spk.speaker || `Speaker ${i + 1}`}.`,
       voiceType: spk.voiceType || "neutral",
     }));
 
-    console.log(`📝 Transcript created for ${transcript.length} segments.`);
+    console.log(`📝 Transcript created for ${transcript.length} segments`);
 
-    // STEP 3: Translation
-    const translated = await translateSegments(transcript, targetLanguage);
+    // 🌐 STEP 3: Translation
+    const translatedResult = await translateSegments(transcript, targetLanguage);
+    const translated = Array.isArray(translatedResult) ? translatedResult : [];
 
-    if (!Array.isArray(translated) || translated.length === 0) {
-      throw new Error("Translation failed or returned no content.");
+    if (translated.length === 0) {
+      throw new Error("Translation failed or returned no content");
     }
 
-    console.log(`🌐 Translated ${translated.length} segments.`);
+    console.log(`🌐 Translated ${translated.length} segments`);
 
-    // STEP 4: AI Voice Generation
-    const voices = await generateVoices(translated);
+    // 🎤 STEP 4: AI Voice Generation
+    const voiceResult = await generateVoices(translated);
+    const voices = Array.isArray(voiceResult) ? voiceResult : [];
 
-    if (!Array.isArray(voices) || voices.length === 0) {
-      throw new Error("Voice generation failed.");
+    if (voices.length === 0) {
+      throw new Error("Voice generation failed");
     }
 
-    console.log(`🎤 Generated ${voices.length} voice tracks.`);
+    console.log(`🎤 Generated ${voices.length} AI voice tracks`);
 
-    // STEP 5: Lip Sync Video
+    // 🎭 STEP 5: Lip Sync Video
     const finalVideoUrl = await runLipSync(videoUrl, voices);
 
     console.log("✅ Dubbing pipeline completed successfully!");
 
     res.json({
       status: "success",
-      message: "Dubify Mini Level 3 complete 🎬",
+      message: "Dubify Mini Level 3 dubbing complete 🎬",
       output: {
         originalVideo: videoUrl,
         dubbedVideo: finalVideoUrl,
