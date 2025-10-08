@@ -13,5 +13,6 @@
     "allowSyntheticDefaultImports": true,
     "allowJs": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "src/ai/**/*"],
+  "exclude": ["node_modules"]
 }
